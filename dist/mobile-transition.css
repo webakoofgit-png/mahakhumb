@@ -1,0 +1,15 @@
+.journey-content{display:contents}
+@media(max-width:760px){
+  /* The site overlays the final pinned viewport, bringing navigation to the
+     top exactly when the intro's scroll range completes. Native scrolling
+     keeps the same transition reversible without jumps or scroll locking. */
+  .journey-content{display:block;position:relative;z-index:12;margin-top:-100svh;background:#fff;min-height:100svh;box-shadow:0 -8px 30px #172d2710}
+  .journey-content>header{position:sticky;top:0;z-index:30;background:#fff;box-shadow:0 2px 10px #192e2610}
+  .journey-content>.topbar{position:relative;z-index:31}
+  .journey-content .booking-hero{scroll-margin-top:72px}
+  .journey-content .mobile-links{z-index:35}
+}
+@media(max-width:760px) and (prefers-reduced-motion:reduce){
+  .journey-intro:not(.motion-enabled)+.journey-content{margin-top:0}
+  .journey-intro.motion-enabled+.journey-content{margin-top:-100svh}
+}
