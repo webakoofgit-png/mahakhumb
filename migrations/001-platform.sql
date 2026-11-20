@@ -1,0 +1,37 @@
+CREATE TABLE IF NOT EXISTS mks_property_images (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, listing_id INT UNSIGNED NOT NULL,
+ storage_key VARCHAR(500) NOT NULL, mime VARCHAR(80) NOT NULL, width SMALLINT UNSIGNED, height SMALLINT UNSIGNED,
+ alt_text VARCHAR(240) NOT NULL, sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0, is_cover BOOLEAN NOT NULL DEFAULT FALSE,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(listing_id) REFERENCES mks_listings(id) ON DELETE CASCADE,
+ INDEX(listing_id,sort_order)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS mks_idempotency_keys (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, actor_key VARCHAR(140) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ idempotency_key VARCHAR(120) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, request_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ response_status SMALLINT UNSIGNED, response_body JSON, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ expires_at DATETIME NOT NULL, UNIQUE(actor_key,idempotency_key), INDEX(expires_at)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS mks_notifications (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id INT UNSIGNED, channel ENUM('email','sms','push','in_app') NOT NULL,
+ event_key VARCHAR(100) NOT NULL, recipient VARCHAR(254) NOT NULL, payload JSON NOT NULL,
+ state ENUM('queued','processing','sent','failed') NOT NULL DEFAULT 'queued', attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+ available_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, sent_at DATETIME, last_error VARCHAR(500),
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX(state,available_at), INDEX(user_id,created_at),
+ FOREIGN KEY(user_id) REFERENCES mks_ops_users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS mks_cms_content (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, content_key VARCHAR(140) NOT NULL, locale CHAR(2) NOT NULL,
+ title VARCHAR(240) NOT NULL, body MEDIUMTEXT NOT NULL, state ENUM('draft','published','archived') NOT NULL DEFAULT 'draft',
+ version INT UNSIGNED NOT NULL DEFAULT 1, updated_by INT UNSIGNED, published_at DATETIME, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE(content_key,locale,version), INDEX(content_key,locale,state), FOREIGN KEY(updated_by) REFERENCES mks_ops_users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS mks_api_request_log (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, request_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ method VARCHAR(10) NOT NULL, path VARCHAR(500) NOT NULL, actor_id INT UNSIGNED, status SMALLINT UNSIGNED NOT NULL,
+ duration_ms INT UNSIGNED NOT NULL, ip VARBINARY(16), created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX(created_at), INDEX(actor_id,created_at), FOREIGN KEY(actor_id) REFERENCES mks_ops_users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS mks_rate_limits (
+ bucket_key VARCHAR(180) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY, count INT UNSIGNED NOT NULL,
+ window_started DATETIME NOT NULL, expires_at DATETIME NOT NULL, INDEX(expires_at)
+) ENGINE=InnoDB;

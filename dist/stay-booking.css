@@ -1,0 +1,28 @@
+.booking-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:9px}
+.booking-gallery button{border-radius:9px;overflow:hidden;background:var(--paper);padding:0}
+.booking-gallery img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.booking-gallery-image img{display:block;max-width:100%;max-height:70dvh;object-fit:contain;margin:auto}
+.booking-map{border:0;width:100%;height:280px;border-radius:9px;margin-top:10px}
+.live-booking-layout{margin-block:20px 36px}
+.live-booking-layout>*{min-width:0}
+.hotel-room,.hotel-review{margin-top:10px}
+.hotel-room{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,165px),1fr));align-items:start;gap:14px}
+.hotel-room .booking-gallery{grid-template-columns:repeat(auto-fit,minmax(min(100%,75px),1fr))}
+.hotel-room h3,.hotel-review p{margin-bottom:6px}
+.live-booking-layout .booking-panel{align-self:start;scroll-margin-top:18px}
+.live-booking-layout label,.booking-guest-form label{display:block;min-width:0;margin-bottom:10px}
+.live-booking-layout .input,.booking-guest-form .input{display:block;width:100%;min-width:0}
+.live-booking-layout .booking-panel h2{margin-bottom:12px}
+.booking-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}
+.booking-property-rules{white-space:pre-line}
+.booking-landmarks{padding-left:20px;margin-top:12px}
+#live-booking-quote:not(:empty),.booking-guest-form{margin-top:16px}
+.booking-price{margin:12px 0}
+.booking-price>div{display:flex;justify-content:space-between;gap:12px;padding:7px 0}
+.booking-price dd{margin:0}
+.booking-price-total{font-weight:700;border-top:1px solid var(--line)}
+.booking-reservation{max-width:680px}
+.booking-cancel-action,#booking-payment-message{margin-top:12px}
+.booking-cancel-action summary{cursor:pointer}
+.booking-cancel-action p{margin:8px 0}
+@media(max-width:760px){.booking-map{height:220px}.booking-gallery{grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr))}}

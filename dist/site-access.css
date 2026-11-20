@@ -1,0 +1,15 @@
+html[lang=hi],html[lang=mr]{font-family:"DM Sans","Nirmala UI","Noto Sans Devanagari",sans-serif}
+html[lang=hi] h1,html[lang=hi] h2,html[lang=mr] h1,html[lang=mr] h2{font-family:"Playfair Display","Nirmala UI","Noto Sans Devanagari",serif}
+.site-language{display:inline-flex;align-items:center;margin-inline-start:8px;flex-shrink:0}
+.site-language select{border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);min-height:36px;padding:4px 6px;font:inherit}
+.skip-main{position:fixed;left:10px;top:-100px;z-index:150;color:var(--ink);background:white;padding:10px}
+.skip-main:focus{top:10px}
+.pilgrim-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px;margin-bottom:24px}
+.pilgrim-section{scroll-margin-top:18px;margin-block:20px}.pilgrim-section h2{margin-bottom:10px}
+.pilgrim-toc{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pilgrim-source{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:13px}
+.pilgrim-phone{font-size:20px;font-weight:700}
+@media(max-width:760px){.site-language{margin-inline-start:4px}.site-language select{min-height:42px}.pilgrim-grid{gap:10px}}
+html[lang=hi] body,html[lang=mr] body{font-family:"DM Sans","Nirmala UI","Noto Sans Devanagari",sans-serif}
+.transport-booking-layout .booking-panel{position:sticky;top:1rem;align-self:start}.transport-map{min-height:280px;border-radius:18px;background:linear-gradient(135deg,#e8efe9,#d4e2dc);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#34544b;text-align:center;padding:2rem}.transport-map small{display:block;max-width:260px;margin-top:.6rem}.fare-preview{min-height:3rem;padding:.7rem 0}.fare-breakdown{display:flex;flex-direction:column;gap:.25rem;border:1px solid rgba(30,70,60,.16);border-radius:12px;padding:.8rem}.fare-breakdown small{color:#64736e}@media(max-width:800px){.transport-booking-layout .booking-panel{position:static}.transport-map{min-height:180px}}
+.header-actions .currency{font-size:0}.header-actions .currency::after{content:'Rs';font-size:11px}

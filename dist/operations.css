@@ -1,0 +1,16 @@
+.ops-layout{display:grid;grid-template-columns:minmax(190px,245px) minmax(0,1fr);gap:22px}
+.ops-heading,.ops-filter,.ops-pager{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.ops-heading{justify-content:space-between;margin-bottom:20px}.ops-heading h1{font-size:clamp(27px,4vw,46px)}
+.ops-heading .ops-form{display:inline-flex;margin-left:12px}.ops-heading .ops-form p:empty{display:none}
+.ops-sidebar{min-width:0;align-self:start;padding:12px}.ops-sidebar .side-link{display:block;text-align:left;width:100%;white-space:normal}
+.ops-main{min-width:0}.ops-main>h2{margin-bottom:14px}.ops-card{margin:12px 0;min-width:0}.ops-card h2{margin-bottom:12px}
+.ops-metrics,.ops-columns,.ops-public-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px}
+.ops-metrics .panel{padding:16px}.ops-metrics strong,.ops-metrics span{display:block}.ops-metrics strong{font-size:24px;color:var(--green)}
+.ops-chart{list-style:none;padding:0}.ops-chart li{display:grid;grid-template-columns:minmax(90px,1fr) 1fr auto;align-items:center;gap:8px;margin:5px 0;font-size:12px}.ops-chart meter{width:100%;accent-color:var(--green)}
+.ops-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.ops-form label,.ops-filter label{display:block;min-width:0;font-size:13px}.ops-form .input,.ops-filter .input{display:block;width:100%;min-width:0;margin-top:4px}
+.ops-form fieldset{border:1px solid var(--line);padding:8px}.ops-form .ops-check{display:flex;align-items:center;gap:7px}.ops-form button{justify-self:start}
+.ops-full{grid-column:1/-1}.ops-filter{margin-bottom:12px}.ops-filter label{flex:1 1 150px}.ops-table{margin-block:8px}.ops-table td{overflow-wrap:anywhere}.ops-table pre{white-space:pre-wrap;max-width:300px}
+.ops-login{max-width:650px}.ops-signup,.ops-details{padding:10px 0;border-top:1px solid var(--line);margin-top:12px}.ops-details summary,.ops-signup summary{cursor:pointer;font-weight:700}
+.ops-permissions{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:8px}.ops-public-card p{white-space:pre-line}.ops-public-card img{width:100%;border-radius:8px;margin-bottom:8px}
+@media(max-width:760px){.ops-layout{grid-template-columns:1fr;gap:12px}.ops-sidebar nav{display:flex;gap:4px;overflow:auto;scrollbar-width:thin}.ops-sidebar .side-link{width:auto;flex:0 0 auto;max-width:170px;white-space:normal}.ops-form{grid-template-columns:1fr}.ops-filter button{min-height:44px}.ops-heading .ops-form{display:inline-flex}}
+.ops-preline{white-space:pre-line}

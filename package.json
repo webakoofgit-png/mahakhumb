@@ -1,1 +1,19 @@
-{"name":"mahakumbh-stays","version":"1.0.0","private":true,"scripts":{"dev":"node server.cjs","check":"node --check dist/app.js"}}
+{
+  "name": "mahakumbh-stays",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.cjs",
+    "check": "node --check dist/app.js",
+    "test": "node backend-smoke.cjs",
+    "admin:create": "node operations-auth.cjs",
+    "db:migrate": "node booking-db.cjs",
+    "db:status": "node -e \"require('./booking-db.cjs').pool?.query('SELECT version,applied_at FROM mks_schema_migrations ORDER BY applied_at').then(([r])=>console.log(r)).finally(()=>require('./booking-db.cjs').pool?.end())\"",
+    "hotel:token": "node booking-db.cjs hotel-token"
+  },
+  "dependencies": {
+    "mysql2": "3.24.6",
+    "nodemailer": "10.6.0",
+    "sql.js": "1.16.0"
+  }
+}
