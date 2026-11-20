@@ -1,7 +1,15 @@
 const assert = require('node:assert/strict');
 const platform = require('./platform.cjs');
+const transport = require('./transportation.cjs');
+const ride = require('./ride-engine.cjs');
 assert.equal(typeof platform.requestId,'function');
 assert.equal(typeof platform.idempotency,'function');
 assert.equal(typeof require('./booking-engine.cjs').quote,'function');
 assert.equal(typeof require('./operations-auth.cjs').requirePermission,'function');
+assert.equal(transport.vehicleOptions.Sedan.passengers,4);
+assert.ok(transport.categories.includes('Tempo Traveller'));
+assert.ok(ride.transitions.requested.includes('searching'));
+assert.ok(!ride.transitions.completed.includes('in_progress'));
+assert.equal(ride.can('requested','searching'),true);
+assert.equal(ride.can('completed','searching'),false);
 console.log('Backend module smoke checks passed.');

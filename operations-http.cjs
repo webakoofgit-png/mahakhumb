@@ -8,6 +8,8 @@ const bulk=require('./bulk-stay.cjs');
 const pilgrim=require('./pilgrim-content.cjs');
 const cab=require('./transportation.cjs');
 const veg=require('./veg-directory.cjs');
+const driver=require('./driver-dashboard.cjs');
+const ride=require('./ride-engine.cjs');
 const {guestOwner,idempotency}=require('./booking-http.cjs');
 function csv(rows){
     const fields=['reference','property','room','checkin','checkout','rooms','guests','status','total_minor','refund_minor','refund_status'];
@@ -69,10 +71,25 @@ async function route(req,res,url){
         }
     }
     if(area==='transport'){
-        if(read&&!id)return {categories:cab.categories,tripTypes:cab.tripTypes};
+        if(read&&!id)return {categories:cab.categories,vehicleOptions:cab.vehicleOptions,tripTypes:cab.tripTypes,mapProvider:process.env.GOOGLE_MAPS_BROWSER_KEY?'google':'unconfigured'};
         if(!read&&id==='fare'&&!action)return cab.fareEstimate(await write());
         if(!read&&!id)return cab.submit(await write());
         if(!read&&id==='status'&&!action)return cab.status((await write()).token);
+    }
+    if(area==='cab-admin'){
+        auth.requirePermission(user,'cabs');
+        if(read&&!id)return cab.adminOverview(user);
+        if(read&&id==='drivers')return cab.adminDrivers(user,paging(url));
+        if(read&&id==='rides')return cab.adminRides(user,paging(url));
+        if(read&&id==='fare-rules')return cab.adminFareRules(user);
+        throw fail(404,'Transport admin endpoint not found.');
+    }
+    if(area==='ride'){
+        if(!read&&id==='search')return ride.search(auth.integer((await write()).tripId,1,4294967295));
+        if(!read&&id==='accept')return ride.accept(user,auth.integer((await write()).tripId,1,4294967295));
+        if(!read&&id==='support')return ride.support(user,await write());
+        if(!read&&id==='transition'){const b=await write();return ride.transition(user,auth.integer(b.tripId,1,4294967295),b.state,b.reason)}
+        throw fail(404,'Ride endpoint not found.');
     }
     if(area==='veg'&&read&&(!id||/^\d+$/.test(id))){
         if(id)return veg.detail(auth.integer(id,1,4294967295));
@@ -86,6 +103,17 @@ async function route(req,res,url){
     if(!user)throw fail(401,'Sign in to continue.');
     if(!read)auth.requireCsrf(req,user);
     if(!read&&area==='logout'){await write();await auth.signOut(req,res,user);return {signedOut:true}}
+    if(area==='driver'){
+        if(!read&&id==='register')return driver.register(user,await write());
+        if(read&&!id)return driver.overview(user);
+        if(!read&&id==='availability')return driver.availability(user,(await write()).online===true);
+        if(!read&&id==='location')return driver.location(user,await write());
+        if(!read&&id==='accept')return driver.accept(user,auth.integer((await write()).tripId,1,4294967295));
+        if(!read&&id==='reject')return driver.reject(user,auth.integer((await write()).tripId,1,4294967295));
+        if(!read&&id==='start'){const body=await write();return driver.start(user,auth.integer(body.tripId,1,4294967295),body.otp)}
+        if(!read&&id==='complete')return driver.complete(user,auth.integer((await write()).tripId,1,4294967295));
+        throw fail(404,'Driver endpoint not found.');
+    }
     const page=paging(url);
     if(area==='cab'){
         const number=value=>auth.integer(value,1,4294967295);

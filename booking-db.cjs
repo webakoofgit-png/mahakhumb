@@ -32,7 +32,7 @@ async function migrate() {
         version VARCHAR(120) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
         applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB`);
-    for (const file of ['booking-schema.sql','operations-schema.sql','migrations/001-platform.sql','migrations/002-transport-platform.sql']) {
+    for (const file of ['booking-schema.sql','operations-schema.sql','migrations/001-platform.sql','migrations/002-transport-platform.sql','migrations/003-cab-customer-features.sql','migrations/004-driver-dashboard.sql','migrations/005-ride-engine.sql']) {
         const schema = fs.readFileSync(path.join(__dirname, file), 'utf8');
         const version = file.replaceAll('\\','/');
         const [done] = await pool.execute('SELECT 1 FROM mks_schema_migrations WHERE version=?',[version]);

@@ -1,4 +1,4 @@
-const {randomBytes}=require('node:crypto');
+const {randomBytes,randomInt}=require('node:crypto');
 const {pool,transaction}=require('./booking-db.cjs');
 const {fail,hash}=require('./booking-engine.cjs');
 const {validSearchDate}=require('./dist/stay-catalog.js');
@@ -6,20 +6,38 @@ const {text,email,integer,businessPhone,businessContact,audit,requirePermission}
 const {fileMime}=require('./operations-properties.cjs');
 
 const categories=['Bike Taxi','Auto Rickshaw','Mini Cab','Sedan','SUV','Tempo Traveller','Luxury Cab'];
+const vehicleOptions={
+ 'Bike Taxi':{passengers:1,luggage:1,ac:false,accessibility:false,image:'bike'},'Auto Rickshaw':{passengers:3,luggage:2,ac:false,accessibility:false,image:'auto'},
+ 'Mini Cab':{passengers:3,luggage:2,ac:true,accessibility:false,image:'mini'},'Sedan':{passengers:4,luggage:3,ac:true,accessibility:true,image:'sedan'},
+ SUV:{passengers:6,luggage:4,ac:true,accessibility:true,image:'suv'},'Tempo Traveller':{passengers:12,luggage:8,ac:true,accessibility:true,image:'tempo'},'Luxury Cab':{passengers:4,luggage:3,ac:true,accessibility:false,image:'luxury'}
+};
 const tripTypes=['Point to point','Airport pickup','Railway station pickup','Hotel to ghat','Group transportation'];
 const indiaNow=()=>new Date(Date.now()+19800000).toISOString().slice(0,19).replace('T',' ');
 function requireCab(user){if(user.role!=='host'||!user.cab)throw fail(403,'Sign in as a cab partner.')}
 async function submit(input){
     const pickup=text(input.pickup,180),dropoff=text(input.dropoff,180);
     if(pickup.toLowerCase()===dropoff.toLowerCase())throw fail(400,'Enter different pickup and drop locations.');
+    const mode=input.bookingMode==='now'?'now':'scheduled';
     if(!validSearchDate(input.date)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.time||''))throw fail(400,'Select a valid pickup date and time.');
     const departure=input.date+' '+input.time+':00';
     if(departure<=indiaNow())throw fail(400,'Select a future pickup time.');
     if(!categories.includes(input.category)||!tripTypes.includes(input.tripType))throw fail(400,'Select a vehicle category and trip type.');
-    const passengers=integer(input.passengers,1,65);
+    const passengers=integer(input.passengers,1,65), luggage=integer(input.luggage||0,0,20);
     const name=text(input.name,120),address=email(input.email),phone=businessPhone(input.phone);
+    const passengerName=text(input.passengerName||name,120),passengerPhone=businessPhone(input.passengerPhone||phone);
+    const relation=['self','family','senior','child','other'].includes(input.passengerRelation)?input.passengerRelation:'self';
+    const assistance=text(input.assistance||'None',120),accessibilityNotes=text(input.accessibilityNotes||'',1000,false);
+    const extraBoarding=integer(input.extraBoardingMinutes||0,0,120), emergency=input.emergencyContact?businessPhone(input.emergencyContact):null;
+    const share=input.consentShareDetails===true||input.consentShareDetails==='true';
+    const hotelRef=input.hotelBookingReference?text(input.hotelBookingReference,40):null;
+    const direction=['to_hotel','from_hotel'].includes(input.hotelDirection)?input.hotelDirection:null;
+    const returnDate=input.returnDate?validSearchDate(input.returnDate)?input.returnDate:null:null;
+    if(input.returnDate&&!returnDate)throw fail(400,'Select a valid return date.');
+    if(returnDate&&(!input.returnTime||!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.returnTime)))throw fail(400,'Select a valid return time.');
+    if(returnDate&&input.returnDate+' '+input.returnTime+':00'<=departure)throw fail(400,'Return pickup must be after the outbound ride.');
     const notes=text(input.notes||'',2400,false);
     const token=randomBytes(32).toString('hex'),code='CAB-'+randomBytes(6).toString('hex').toUpperCase();
+    const startOtp=String(randomInt(100000,1000000)),startOtpHash=hash('cab-otp:'+startOtp);
     return transaction(async db=>{
         const key=hash('cab-enquiry:'+address);
         await db.execute(`INSERT INTO mks_ops_login_limits(identity_hash,attempts,expires)
@@ -28,9 +46,10 @@ async function submit(input){
         const [[limit]]=await db.execute('SELECT attempts FROM mks_ops_login_limits WHERE identity_hash=? FOR UPDATE',[key]);
         if(limit.attempts>=5)throw fail(429,'Too many enquiries. Try again later.');
         await db.execute('UPDATE mks_ops_login_limits SET attempts=attempts+1 WHERE identity_hash=?',[key]);
-        await db.execute(`INSERT INTO mks_cab_trips(code,access_hash,pickup,dropoff,departure,category,trip_type,passengers,guest_name,guest_email,guest_phone,notes)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,[code,hash(token),pickup,dropoff,departure,input.category,input.tripType,passengers,name,address,phone,notes]);
-        return {code,token};
+        if(hotelRef){const [[booking]]=await db.execute("SELECT reference FROM mks_bookings WHERE reference=? AND status='confirmed'",[hotelRef]);if(!booking)throw fail(404,'Confirmed hotel booking not found.');}
+        const [result]=await db.execute(`INSERT INTO mks_cab_trips(code,access_hash,pickup,dropoff,departure,category,trip_type,passengers,luggage_count,guest_name,guest_email,guest_phone,notes,booking_mode,passenger_name,passenger_phone,passenger_relation,emergency_contact,consent_share_details,assistance,accessibility_notes,extra_boarding_minutes,hotel_booking_reference,hotel_direction,return_pickup,return_dropoff,return_departure,start_otp_hash,start_otp_expires)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[code,hash(token),pickup,dropoff,departure,input.category,input.tripType,passengers,luggage,name,address,phone,notes,mode,passengerName,passengerPhone,relation,emergency,share,assistance,accessibilityNotes,extraBoarding,hotelRef,direction,returnDate?pickup:null,returnDate?dropoff:null,returnDate?returnDate+' '+input.returnTime+':00':null,startOtpHash,new Date(Date.now()+24*60*60*1000)]);
+        return {code,token,tripId:result.insertId,scheduled:mode==='scheduled',returnTripLinked:false,luggage,startOtp};
     });
 }
 async function fareEstimate(input){
@@ -45,11 +64,11 @@ async function fareEstimate(input){
     const subtotal=rule.base_minor+Math.round(distanceKm*rule.per_km_minor)+Math.round(durationMin*rule.per_minute_minor);
     const peak=input.peak===true?Math.round(subtotal*.2):0, toll=Math.max(0,integer(input.tollMinor||0,0,1000000));
     const tax=Math.round((subtotal+peak+toll)*rule.tax_bps/10000), total=subtotal+peak+toll+tax;
-    return {category:input.category,distanceKm:Number(distanceKm.toFixed(2)),durationMin,baseMinor:rule.base_minor,distanceMinor:Math.round(distanceKm*rule.per_km_minor),durationMinor:Math.round(durationMin*rule.per_minute_minor),peakMinor:peak,tollMinor:toll,taxMinor:tax,taxBps:rule.tax_bps,totalMinor:total,currency:'INR'};
+    return {category:input.category,vehicle:vehicleOptions[input.category],distanceKm:Number(distanceKm.toFixed(2)),durationMin,baseMinor:rule.base_minor,distanceMinor:Math.round(distanceKm*rule.per_km_minor),durationMinor:Math.round(durationMin*rule.per_minute_minor),peakMinor:peak,tollMinor:toll,taxMinor:tax,taxBps:rule.tax_bps,discountMinor:0,totalMinor:total,currency:'INR',expiresAt:new Date(Date.now()+5*60*1000).toISOString()};
 }
 async function status(token){
     if(typeof token!=='string'||!/^[a-f0-9]{64}$/.test(token))throw fail(404,'Trip enquiry not found.');
-    const [[row]]=await pool.execute(`SELECT t.code,t.pickup,t.dropoff,t.departure,t.trip_type,t.passengers,t.category,t.state,t.fare,
+    const [[row]]=await pool.execute(`SELECT t.code,t.pickup,t.dropoff,t.departure,t.trip_type,t.passengers,t.luggage_count,t.category,t.state,t.fare,t.booking_mode,t.passenger_name,t.assistance,t.return_departure,t.hotel_booking_reference,
         IF(t.state IN ('accepted','completed'),p.business_name,NULL) AS partner,
         IF(t.state IN ('accepted','completed'),p.business_phone,NULL) AS partner_phone,
         IF(t.state IN ('accepted','completed'),v.name,NULL) AS vehicle
@@ -119,6 +138,7 @@ async function saveResource(user,kind,id,input){
             const [result]=await db.execute('INSERT INTO '+table+' (partner_id,'+columns+') VALUES ('+
                 Array.from({length:fields.length+1},()=>'?').join(',')+')',[user.id,...fields]);
             id=result.insertId;
+            if(!vehicle)await db.execute('INSERT IGNORE INTO mks_cab_driver_profiles(driver_id) VALUES (?)',[id]);
         }
         await audit(db,user,'cab.'+kind+'.save',id);
         return {id};
@@ -268,4 +288,8 @@ async function earnings(user){
         WHERE partner_id=? AND state='completed'`,[user.id]);
     return balance;
 }
-module.exports={categories,tripTypes,submit,status,fareEstimate,profile,resources,saveResource,upload,file,review,partners,changePartnerState,trips,assign,changeTrip,earnings};
+async function adminOverview(user){requirePermission(user,'cabs');const [[x]]=await pool.query(`SELECT COUNT(*) total,SUM(state IN ('assigned','accepted')) active,SUM(state='requested') pending,SUM(state='completed') completed,SUM(state='cancelled') cancelled,COALESCE(SUM(fare),0) gross FROM mks_cab_trips`);const [[d]]=await pool.query("SELECT COUNT(*) online FROM mks_cab_driver_profiles WHERE online=1 AND verification_state='verified'");return {...x,onlineDrivers:d.online};}
+async function adminDrivers(user,page){requirePermission(user,'cabs');const [rows]=await pool.query(`SELECT d.id,d.name,d.phone,p.verification_state,p.online,p.last_location_at,v.registration,v.category FROM mks_cab_drivers d JOIN mks_cab_driver_profiles p ON p.driver_id=d.id LEFT JOIN mks_cab_vehicles v ON v.id=(SELECT vehicle_id FROM mks_cab_trips WHERE driver_id=d.id ORDER BY id DESC LIMIT 1) ORDER BY d.id DESC LIMIT ? OFFSET ?`,[page.limit,page.offset]);return rows;}
+async function adminRides(user,page){requirePermission(user,'cabs');const [rows]=await pool.query(`SELECT id,code,pickup,dropoff,departure,category,passengers,state,fare,driver_id,created_at FROM mks_cab_trips ORDER BY id DESC LIMIT ? OFFSET ?`,[page.limit,page.offset]);return rows;}
+async function adminFareRules(user){requirePermission(user,'cabs');const [rows]=await pool.query('SELECT * FROM mks_cab_fare_rules ORDER BY category');return rows;}
+module.exports={categories,vehicleOptions,tripTypes,submit,status,fareEstimate,profile,resources,saveResource,upload,file,review,partners,changePartnerState,trips,assign,changeTrip,earnings,adminOverview,adminDrivers,adminRides,adminFareRules};

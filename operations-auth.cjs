@@ -59,8 +59,8 @@ function businessContact(input){
 async function session(req){
     const key=token(req);
     if(!key)return null;
-    const [[user]]=await pool.execute(`SELECT u.id,u.email,u.name,u.role,u.permissions,s.csrf,(h.user_id IS NOT NULL) AS partner,(c.user_id IS NOT NULL) AS cab FROM mks_ops_sessions s
-        JOIN mks_ops_users u ON u.id=s.user_id LEFT JOIN mks_hotel_partners h ON h.user_id=u.id LEFT JOIN mks_cab_partners c ON c.user_id=u.id WHERE s.token_hash=? AND s.expires>UTC_TIMESTAMP() AND u.active=1`,[hash(key)]);
+    const [[user]]=await pool.execute(`SELECT u.id,u.email,u.name,u.role,u.permissions,s.csrf,(h.user_id IS NOT NULL) AS partner,(c.user_id IS NOT NULL) AS cab,dp.driver_id,(dp.verification_state='verified') AS driver_verified,dp.online AS driver_online FROM mks_ops_sessions s
+        JOIN mks_ops_users u ON u.id=s.user_id LEFT JOIN mks_hotel_partners h ON h.user_id=u.id LEFT JOIN mks_cab_partners c ON c.user_id=u.id LEFT JOIN mks_cab_driver_profiles dp ON dp.user_id=u.id WHERE s.token_hash=? AND s.expires>UTC_TIMESTAMP() AND u.active=1`,[hash(key)]);
     if(user)user.permissions=user.role==='superadmin'?permissions:json(user.permissions);
     return user||null;
 }

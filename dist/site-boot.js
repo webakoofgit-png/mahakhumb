@@ -14,3 +14,4 @@ function pictureVariants(image){
 }
 const siteCanonical=document.querySelector('link[rel="canonical"]');
 const canonicalOrigin=siteCanonical?new URL(siteCanonical.href).origin:location.origin;
+const driverScript=document.createElement('script');driverScript.defer=true;driverScript.src='/driver-dashboard.js';document.head.appendChild(driverScript);

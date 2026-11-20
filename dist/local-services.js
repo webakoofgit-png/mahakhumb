@@ -16,32 +16,46 @@ async function loadTransport(root){
     if(!root.isConnected)return;
     root.innerHTML=serviceHead('Cab and transportation','Book a verified partner ride around Nashik, Trimbakeshwar and nearby areas.')+
         `<div class="detail-layout live-booking-layout transport-booking-layout">
-        ${opSection('Request a trip',`<form class="ops-form" onsubmit="submitTransport(event)">
-            ${opField('Trip type','tripType',type,{choices:config.tripTypes})}
-            ${opField('Vehicle category','category',config.categories[0],{choices:config.categories})}
-            ${opField('Pickup location','pickup',pickup,{maxlength:180,placeholder:'Nashik Railway Station'})}${opField('Drop-off location','dropoff','',{maxlength:180,placeholder:'Trimbakeshwar Temple'})}
-            <p class="notice ops-full">For a live fare, choose coordinates through the configured map provider. This local build accepts coordinates for secure server calculation.</p>
-            ${opField('Pickup latitude','pickupLat','',{type:'number',step:'any',min:-90,max:90,optional:true})}${opField('Pickup longitude','pickupLon','',{type:'number',step:'any',min:-180,max:180,optional:true})}
-            ${opField('Drop latitude','dropoffLat','',{type:'number',step:'any',min:-90,max:90,optional:true})}${opField('Drop longitude','dropoffLon','',{type:'number',step:'any',min:-180,max:180,optional:true})}
-            <div class="ops-full fare-preview" id="cab-fare-preview" aria-live="polite"><span class="notice">Fare is calculated on the backend after coordinates are supplied.</span></div>
-            ${opField('Pickup date','date','',{type:'date',min:indiaDate()})}${opField('Pickup time (IST)','time','',{type:'time'})}
-            ${opField('Passengers','passengers',1,{type:'number',min:1,max:65})}${opField('Contact name','name','',{maxlength:120})}
-            ${opField('Email','email','',{type:'email'})}${opField('Phone','phone','',{type:'tel',maxlength:30})}
-            ${opField('Flight or train number, group needs, or other notes','notes','',{type:'textarea',maxlength:2400,optional:true})}
+        ${opSection('Book your ride',`<form class="ops-form" id="cab-booking-form" onsubmit="submitTransport(event)">
+            <div class="cab-location-tools ops-full"><button type="button" class="btn outline small" onclick="useCabLocation()">Use current location</button><button type="button" class="btn outline small" onclick="swapCabLocations()">Swap</button><button type="button" class="btn outline small" onclick="addCabStop()">+ Add stop</button></div>
+            ${opField('Pickup location','pickup',pickup,{maxlength:180,placeholder:'Nashik Railway Station',list:'cab-saved-locations'})}${opField('Drop-off location','dropoff','',{maxlength:180,placeholder:'Trimbakeshwar Temple',list:'cab-saved-locations'})}
+            <datalist id="cab-saved-locations"><option value="Nashik Railway Station"><option value="Nashik Airport"><option value="Panchavati"><option value="Trimbakeshwar Temple"><option value="Ramkund Ghat"></datalist><div id="cab-stops" class="ops-full"></div>
+            <p class="notice ops-full">${config.mapProvider==='google'?'Map search is enabled.':'Map search is unavailable until an approved provider is configured; enter coordinates below for a secure fare quote.'}</p>
+            ${opField('Pickup latitude','pickupLat','',{type:'number',step:'any',min:-90,max:90,optional:true})}${opField('Pickup longitude','pickupLon','',{type:'number',step:'any',min:-180,max:180,optional:true})}${opField('Drop latitude','dropoffLat','',{type:'number',step:'any',min:-90,max:90,optional:true})}${opField('Drop longitude','dropoffLon','',{type:'number',step:'any',min:-180,max:180,optional:true})}
+            <div class="ops-full cab-saved-row"><span>Saved locations</span><button type="button" onclick="setCabLocation('Home')">Home</button><button type="button" onclick="setCabLocation('Hotel')">Hotel</button><button type="button" onclick="setCabLocation('Recent')">Recent</button></div>
+            <div class="ops-full cab-mode"><label><input type="radio" name="bookingMode" value="now" checked onchange="toggleCabSchedule(false)"> Book now</label><label><input type="radio" name="bookingMode" value="schedule" onchange="toggleCabSchedule(true)"> Schedule later</label></div>
+            <label class="check-label ops-full"><input type="checkbox" onchange="toggleCabEasy(this.checked)"> Senior citizen easy mode</label>
+            <div id="cab-schedule-fields" class="ops-full" hidden>${opField('Pickup date','date','',{type:'date',min:indiaDate()})}${opField('Pickup time (IST)','time','',{type:'time'})}</div>
+            ${opField('Passengers','passengers',1,{type:'number',min:1,max:65})}${opField('Luggage','luggage',0,{type:'number',min:0,max:20})}${opField('Special assistance','assistance','None',{choices:['None','Wheelchair assistance','Elderly traveller','Child seat request']})}
+            ${opField('Passenger name','passengerName','',{maxlength:120})}${opField('Passenger mobile','passengerPhone','',{type:'tel',maxlength:30})}${opField('Passenger type','passengerRelation','self',{choices:[['self','Me'],['family','Family member'],['senior','Senior citizen'],['child','Child'],['other','Other']]})}
+            ${opField('Emergency contact','emergencyContact','',{type:'tel',maxlength:30,optional:true})}${opField('Extra boarding time (minutes)','extraBoardingMinutes',0,{type:'number',min:0,max:120,optional:true})}${opField('Accessibility / companion notes','accessibilityNotes','',{type:'textarea',maxlength:1000,optional:true})}
+            <label class="check-label ops-full"><input type="checkbox" name="consentShareDetails" value="true"> I consent to sharing passenger details with the assigned driver.</label>
+            <div class="ops-full return-toggle"><label><input type="checkbox" name="roundTrip" value="true" onchange="toggleCabReturn(this.checked)"> Add a return trip</label></div><div id="cab-return-fields" class="ops-full" hidden>${opField('Return date','returnDate','',{type:'date',min:indiaDate()})}${opField('Return time','returnTime','',{type:'time'})}</div>
+            ${opField('Confirmed hotel booking reference','hotelBookingReference','',{maxlength:40,optional:true})}${opField('Hotel cab direction','hotelDirection','to_hotel',{choices:[['to_hotel','Book cab to hotel'],['from_hotel','Book cab from hotel']],optional:true})}
+            ${opField('Trip type','tripType',type,{choices:config.tripTypes})}<div class="ops-full vehicle-grid" role="group" aria-label="Vehicle categories">${config.categories.map((c,i)=>{const v=config.vehicleOptions?.[c]||{};return `<button type="button" class="vehicle-card ${i===0?'selected':''}" data-category="${oe(c)}" onclick="selectCabVehicle(this)"><strong>${oe(c)}</strong><span>${v.passengers||'—'} passengers · ${v.luggage||'—'} bags</span><small>${v.ac?'AC':'Non-AC'}${v.accessibility?' · accessibility-ready':''}</small><em>Select</em></button>`}).join('')}</div><input type="hidden" name="category" value="${oe(config.categories[0])}">
+            ${opField('Contact name','name','',{maxlength:120})}${opField('Email','email','',{type:'email'})}${opField('Phone','phone','',{type:'tel',maxlength:30})}
+            ${opField('Additional notes','notes','',{type:'textarea',maxlength:2400,optional:true})}
+            <div class="ops-full fare-preview" id="cab-fare-preview" aria-live="polite"><span class="notice">Select a vehicle and valid map coordinates for a backend fare quote.</span></div>
             <p class="notice ops-full" role="status"></p><button class="btn outline" type="button" onclick="estimateCabFare(this.form)">Estimate fare</button> <button class="btn" type="submit">Request verified ride</button>
         </form>`)}
-        <aside class="panel booking-panel"><h2>Ride map & assignment</h2>
-          <div class="transport-map" role="img" aria-label="Map preview"><span>Map preview</span><small>Configure an approved map provider for production geocoding and route display.</small></div>
-          <p>We review the enquiry and assign a local transport partner. The partner confirms the trip. Save the private status link to follow the assignment and see the fare.</p>
-          <a class="btn outline" href="#/cab-partner">Cab partner portal</a>
-        </aside></div>`;
+        <aside class="panel booking-panel"><h2>Route preview</h2><div class="transport-map" role="img" aria-label="Route preview map"><span>Map provider unavailable</span><small>Configure an approved Google Maps provider to enable autocomplete, markers and route lines. No route or driver availability is simulated.</small></div><p>Verified transport partners receive requests after review. Assignment and vehicle checks happen on the server.</p><a class="btn outline" href="#/cab-partner">Cab partner portal</a></aside></div>`;
 }
+function toggleCabSchedule(show){const el=document.getElementById('cab-schedule-fields');if(el)el.hidden=!show}
+function toggleCabReturn(show){const el=document.getElementById('cab-return-fields');if(el)el.hidden=!show}
+function toggleCabEasy(show){const f=document.getElementById('cab-booking-form');if(f)f.classList.toggle('cab-easy-mode',show)}
+function selectCabVehicle(button){const form=button.closest('form');form.querySelectorAll('.vehicle-card').forEach(x=>x.classList.remove('selected'));button.classList.add('selected');form.elements.category.value=button.dataset.category;const preview=form.querySelector('#cab-fare-preview');if(preview)preview.innerHTML='<span class="notice">Vehicle selected. Add map coordinates to calculate the backend fare.</span>'}
+function swapCabLocations(){const f=document.getElementById('cab-booking-form');if(!f)return;const a=f.elements.pickup.value;f.elements.pickup.value=f.elements.dropoff.value;f.elements.dropoff.value=a;['Lat','Lon'].forEach(s=>{const x=f.elements['pickup'+s].value;f.elements['pickup'+s].value=f.elements['dropoff'+s].value;f.elements['dropoff'+s].value=x})}
+function addCabStop(){const root=document.getElementById('cab-stops');if(!root)return;const n=root.querySelectorAll('input').length+1;if(n>3)return;root.insertAdjacentHTML('beforeend',`<label class="field ops-full">Stop ${n}<input class="input" name="stop${n}" maxlength="180" placeholder="Intermediate stop"></label>`)}
+function setCabLocation(kind){const f=document.getElementById('cab-booking-form');if(f)f.elements.pickup.value=kind==='Home'?'Home':kind==='Hotel'?'Your hotel':'Recent location'}
+function useCabLocation(){if(!navigator.geolocation){toast('Location permission is unavailable. Enter pickup manually.');return}navigator.geolocation.getCurrentPosition(p=>{const f=document.getElementById('cab-booking-form');if(f){f.elements.pickup.value='Current location';f.elements.pickupLat.value=p.coords.latitude;f.elements.pickupLon.value=p.coords.longitude}},()=>toast('Location permission was not granted. Enter pickup manually.'),{enableHighAccuracy:true,timeout:8000})}
 async function submitTransport(event){
     event.preventDefault();
     const form=event.target,button=form.querySelector('button'),message=form.querySelector('[role=status]');
     button.disabled=true;
     try{
-        const result=await opsApi('transport',Object.fromEntries(new FormData(form)));
+        if(form.elements.bookingMode?.value==='now'){const d=new Date(Date.now()+20*60000),pad=n=>String(n).padStart(2,'0');form.elements.date.value=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;form.elements.time.value=`${pad(d.getHours())}:${pad(d.getMinutes())}`}
+        const payload=Object.fromEntries(new FormData(form));payload.notes=[payload.notes,...[...form.querySelectorAll('[name^="stop"]')].map(x=>'Stop: '+x.value).filter(Boolean)].filter(Boolean).join(' | ');
+        const result=await opsApi('transport',payload);
         if(form.isConnected)go('/cab-trip/'+result.token);
     }catch(error){if(form.isConnected)message.textContent=error.message}
     finally{if(button.isConnected)button.disabled=false}
@@ -314,6 +328,13 @@ function serviceOperations(section,params){
         if(section==='requests')params.set('status','assigned');
         return ['cab/trips?'+params,rows=>cabTripTable(rows)];
     }
+    if(!operationsHost&&section.startsWith('transport-')){
+        if(section==='transport-overview')return ['cab-admin',transportAdminOverview];
+        if(section==='transport-drivers'||section==='transport-verification')return ['cab-admin/drivers?'+params,transportAdminDrivers];
+        if(section==='transport-rides'||section==='transport-live'||section==='transport-scheduled')return ['cab-admin/rides?'+params,transportAdminRides];
+        if(section==='transport-fares')return ['cab-admin/fare-rules',transportAdminFares];
+        return ['cab-admin/rides?'+params,transportAdminUnavailable];
+    }
     if(!operationsHost&&section==='cabs'){
         const showTrips=new URLSearchParams(location.hash.split('?')[1]).get('trips')==='1';
         return showTrips?['cab/trips?'+params,rows=>'<a class="btn outline small" href="#/admin/cabs">Cab partners</a>'+cabTripTable(rows,true)]:
@@ -322,6 +343,11 @@ function serviceOperations(section,params){
     if(!operationsHost&&section==='restaurants')return ['restaurants?'+params,adminRestaurants];
     return null;
 }
+function transportAdminOverview(data){return `<div class="ops-metrics">${[['Total rides',data.total],['Active rides',data.active],['Pending requests',data.pending],['Completed rides',data.completed],['Cancelled rides',data.cancelled],['Online verified drivers',data.onlineDrivers],['Gross booking value',opMoney(data.gross)]].map(x=>`<div class="panel"><strong>${x[1]||0}</strong><span>${x[0]}</span></div>`).join('')}</div><p class="notice">All metrics are calculated from persisted cab records. No demo activity is included.</p>`}
+function transportAdminDrivers(rows){return opsFilter()+opTable(['Driver','Phone','Verification','Online','Last location','Vehicle'],rows.map(x=>[oe(x.name),oe(x.phone),opStatus(x.verification_state),x.online?'Online':'Offline',oe(x.last_location_at||'Never'),oe(x.registration||'—')]))+opsPager(rows)}
+function transportAdminRides(rows){return opsFilter(true)+opTable(['Ride','Route','Departure','Category','Passengers','Driver','Fare','Status'],rows.map(x=>[oe(x.code),oe(x.pickup)+' → '+oe(x.dropoff),oe(x.departure),oe(x.category),x.passengers,x.driver_id||'Unassigned',x.fare?opMoney(x.fare):'—',opStatus(x.state)]))+opsPager(rows)}
+function transportAdminFares(rows){return opTable(['Category','Base','Per km','Per minute','Tax','Commission','Active'],rows.map(x=>[oe(x.category),opMoney(x.base_minor),opMoney(x.per_km_minor),opMoney(x.per_minute_minor),(x.tax_bps/100)+'%',(x.commission_bps/100)+'%',x.active?'Yes':'No']))}
+function transportAdminUnavailable(){return '<p class="notice">This transport module has no persisted records or API workflow configured yet. It is intentionally not populated with sample activity.</p>'}
 const servicesRenderBase=render;
 render=function(){
     servicesRenderBase();
